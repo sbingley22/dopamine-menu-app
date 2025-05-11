@@ -6,6 +6,8 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import MenuSection from './menuSection.tsx'
+import { Pressable } from 'react-native'
+import ConfirmModal from '../../components/ConfirmModal.tsx'
 
 const DEFAULT_MENU = {
   starters: [
@@ -35,6 +37,24 @@ const DEFAULT_MENU = {
 
 export default function HomeScreen() {
   const [menu, setMenu] = useState(DEFAULT_MENU)
+  const [modalVisible, setModalVisible] = useState(false)
+  const [modalType, setModalType] = useState('')
+
+  const handleLongPressHeader = () => {
+    setModalVisible(true)
+    setModalType('reset-menu')
+  }
+
+  const handleChoice = (accepted) => {
+    console.log(accepted, modalType)
+    if (accepted) {
+      if (modalType === 'reset-menu') {
+        resetMenu()
+      }
+    }
+    setModalVisible(false)
+    setModalType('')
+  }
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -51,15 +71,47 @@ export default function HomeScreen() {
     loadMenu()
   }, [])
 
+  const resetMenu = () => {
+    AsyncStorage.removeItem('dopamineMenu')
+    setMenu(DEFAULT_MENU)
+  }
+
+  const saveMenu = (newMenu) => {
+    AsyncStorage.setItem('dopamineMenu', JSON.stringify(newMenu))
+  }
+
+  const addMenuItem = (course, item) => {
+    const tempMenu = {...menu}
+    tempMenu[course].push(item)
+    setMenu(tempMenu)
+    saveMenu(tempMenu)
+  }
+
+  const deleteMenuItem = (course, index) => {
+    const tempMenu = {...menu}
+    tempMenu[course].splice(index, 1)
+    setMenu(tempMenu)
+    saveMenu(tempMenu)
+  }
+
   return (
     <ParallaxScrollView headerBackgroundColor={{ light: '#A1CE00', dark: '#1D3D00' }}>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Dopamine Menu</ThemedText>
+        <Pressable onLongPress={()=>handleLongPressHeader()}>
+          <ThemedText type="title">Dopamine Menu</ThemedText>
+        </Pressable>
       </ThemedView>
 
-      <MenuSection title="Starters" items={menu.starters} />
-      <MenuSection title="Mains" items={menu.mains} />
-      <MenuSection title="Deserts" items={menu.deserts} />
+      <MenuSection title="Starters" items={menu.starters} deleteMenuItem={deleteMenuItem} addMenuItem={addMenuItem} />
+      <MenuSection title="Mains" items={menu.mains} deleteMenuItem={deleteMenuItem} addMenuItem={addMenuItem} />
+      <MenuSection title="Deserts" items={menu.deserts} deleteMenuItem={deleteMenuItem} addMenuItem={addMenuItem} />
+
+      <ConfirmModal
+        visible={modalVisible}
+        onConfirm={() => handleChoice(true)}
+        onCancel={() => handleChoice(false)}
+        type={modalType}
+      />
     </ParallaxScrollView>
   );
 }
